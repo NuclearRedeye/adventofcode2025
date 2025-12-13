@@ -1,19 +1,16 @@
-import { start } from 'repl';
+import type { Range } from './types/range.ts';
+
 import { readFile } from './utils/file-utils.ts';
+import { create, size, flatten } from './utils/range-utils.ts';
 
 const day = 5;
 
 const reRange = new RegExp(/^(\d+)-(\d+)$/);
 const reItem = new RegExp(/^(\d+)$/);
 
-type range = {
-  start: bigint,
-  end: bigint
-};
-
 type preparedData = {
-  fresh: range[];
-  inventory: bigint[];
+  fresh: Range[];
+  inventory: number[];
 }
 
 function prepareData(data: string[]): preparedData {
@@ -23,68 +20,27 @@ function prepareData(data: string[]): preparedData {
   }
 
   for (const row of data){
-
-    // Match ranges
     const range = row.match(reRange);
     if (range) {
-      retVal.fresh.push({
-        start: BigInt(range[1]),
-        end: BigInt(range[2])
-      });
+      retVal.fresh.push(create(parseInt(range[1]), parseInt(range[2])));
     }
 
-    // Match Items
     const item = row.match(reItem);
     if (item) {
-      retVal.inventory.push(BigInt(item[1]));
+      retVal.inventory.push(parseInt(item[1]));
     }
   }
 
   return retVal;
 };
 
-function deDuplicate(data: range[]): range[] {
-  const processed = new Set<range>();
-  for (const range of data) {
-
-    const toAdd = {
-      start: range.start,
-      end: range.end
-    }
-
-    const duplicates = new Set<range>();
-    for (const entry of processed) {
-      if (toAdd.start >= entry.start && toAdd.start <= entry.end || toAdd.end >= entry.start && toAdd.end <= entry.end) {
-        toAdd.start = (toAdd.start < entry.start) ? toAdd.start : entry.start;
-        toAdd.end = (toAdd.end > entry.end) ? toAdd.end : entry.end;
-        duplicates.add(entry);
-      }
-
-      if (entry.start < toAdd.start && entry.end > toAdd.end || toAdd.start < entry.start && toAdd.end > entry.end) {
-        toAdd.start = (toAdd.start < entry.start) ? toAdd.start : entry.start;
-        toAdd.end = (toAdd.end > entry.end) ? toAdd.end : entry.end;
-        duplicates.add(entry);
-      }
-    }
-
-    for (const duplicate of duplicates) {
-      processed.delete(duplicate);
-    }
-    
-    processed.add(toAdd);
-  }
-
-  return Array.from(processed);
-}
-
-
-function exercise1(data: preparedData): bigint {
-  let retVal = 0n;
-  const merged = deDuplicate(data.fresh);
+function exercise1(data: preparedData): number {
+  let retVal = 0;
+  const merged = flatten(data.fresh);
   for (const item of data.inventory) {
     for (const range of merged) {
       if (item >= range.start && item <= range.end) {
-        retVal += 1n;
+        retVal += 1;
         break;
       }
     }
@@ -92,12 +48,12 @@ function exercise1(data: preparedData): bigint {
   return retVal;
 };
 
-function exercise2(data: preparedData): bigint {
-  let retVal = 0n;
+function exercise2(data: preparedData): number {
+  let retVal = 0;
 
-  const merged = deDuplicate(data.fresh);
+  const merged = flatten(data.fresh);
   for (const item of merged) {
-    retVal += ((item.end - item.start) + 1n);
+    retVal += size(item);
   }
 
   return retVal;
@@ -113,14 +69,14 @@ const real = prepareData(await readFile(`./data/day${day}/data.txt`));
 
 // Exercise 1: Test Case
 let answer = exercise1(test);
-console.assert(answer === 3n);
+console.assert(answer === 3);
 
 answer = exercise1(real);
 console.log(`Day ${day} Exercise 1 = ${answer}`);
 
 // Exercise 2: Test Case
 answer = exercise2(test);
-console.assert(answer === 14n);
+console.assert(answer === 14);
 
 answer = exercise2(real);
 console.log(`Day ${day} Exercise 2 = ${answer}`);
